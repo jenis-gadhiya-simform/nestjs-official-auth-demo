@@ -1,0 +1,135 @@
+generator client {
+  provider            = "prisma-client"
+  output              = "../src/generated/prisma"
+  moduleFormat        = "esm"
+  importFileExtension = "js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ---------------------------------------------------------------------------
+// Application data
+// ---------------------------------------------------------------------------
+
+enum Role {
+  admin
+  user
+}
+
+model User {
+  id            String     @id @default(uuid()) @db.Uuid
+  /// Trimmed, lowercased and in Unicode NFC.
+  email         String     @unique
+  emailVerified Boolean    @default(false) @map("email_verified")
+  role          Role       @default(user)
+  /// Null for accounts created through Google or Microsoft.
+  passwordHash  String?    @map("password_hash")
+  createdAt     DateTime   @default(now()) @map("created_at") @db.Timestamptz(3)
+  identities    Identity[]
+  notes         Note[]
+
+  @@map("users")
+}
+
+/// An external account (Google, Microsoft) linked to a user, by the provider's stable subject id.
+model Identity {
+  provider  String
+  subject   String
+  userId    String   @map("user_id") @db.Uuid
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  @@id([provider, subject])
+  @@index([userId])
+  @@map("identities")
+}
+
+model Note {
+  id        String   @id @default(uuid()) @db.Uuid
+  ownerId   String   @map("owner_id") @db.Uuid
+  owner     User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  title     String
+  content   String   @default("")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@index([ownerId])
+  @@map("notes")
+}
+
+// ---------------------------------------------------------------------------
+// @nestjs/authentication state: sessions, refresh tokens, emailed links and
+// OIDC logins in progress. Ids are SHA-256 hashes: the tokens themselves are
+// never stored. No foreign keys: the package owns these rows, and a deleted
+// user's leftovers are refused by validate() anyway.
+// ---------------------------------------------------------------------------
+
+model AuthSession {
+  id           String   @id
+  userId       String   @map("user_id")
+  createdAt    DateTime @map("created_at") @db.Timestamptz(3)
+  expiresAt    DateTime @map("expires_at") @db.Timestamptz(3)
+  lastActiveAt DateTime @map("last_active_at") @db.Timestamptz(3)
+  mfa          String?
+  metadata     Json?
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("auth_sessions")
+}
+
+model AuthRefreshToken {
+  id              String    @id
+  familyId        String    @map("family_id")
+  userId          String    @map("user_id")
+  createdAt       DateTime  @map("created_at") @db.Timestamptz(3)
+  expiresAt       DateTime  @map("expires_at") @db.Timestamptz(3)
+  familyExpiresAt DateTime  @map("family_expires_at") @db.Timestamptz(3)
+  usedAt          DateTime? @map("used_at") @db.Timestamptz(3)
+  claims          Json?
+
+  @@index([familyId])
+  @@index([userId])
+  @@index([familyExpiresAt])
+  @@map("auth_refresh_tokens")
+}
+
+/// Revoked families, kept apart from the tokens so a revocation also covers tokens saved after it.
+model AuthRevokedTokenFamily {
+  familyId  String   @id @map("family_id")
+  revokedAt DateTime @default(now()) @map("revoked_at") @db.Timestamptz(3)
+
+  @@map("auth_revoked_token_families")
+}
+
+model AuthEmailToken {
+  id          String   @id
+  /// 'password-reset' | 'email-verification'
+  purpose     String
+  userId      String   @map("user_id")
+  email       String
+  fingerprint String?
+  createdAt   DateTime @map("created_at") @db.Timestamptz(3)
+  expiresAt   DateTime @map("expires_at") @db.Timestamptz(3)
+
+  @@index([userId, purpose])
+  @@index([expiresAt])
+  @@map("auth_email_tokens")
+}
+
+model AuthOidcState {
+  state         String   @id
+  provider      String
+  nonce         String?
+  codeVerifier  String   @map("code_verifier")
+  redirectTo    String?  @map("redirect_to")
+  createdAt     DateTime @map("created_at") @db.Timestamptz(3)
+  expiresAt     DateTime @map("expires_at") @db.Timestamptz(3)
+  linkUserId    String?  @map("link_user_id")
+  linkSessionId String?  @map("link_session_id")
+
+  @@index([expiresAt])
+  @@map("auth_oidc_states")
+}

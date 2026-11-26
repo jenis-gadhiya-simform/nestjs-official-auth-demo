@@ -1,0 +1,11 @@
+import { Module } from '@nestjs/common';
+import { UserPolicy } from './user.policy.js';
+import { UsersController } from './users.controller.js';
+import { UsersRepository } from './users.repository.js';
+
+@Module({
+  controllers: [UsersController],
+  providers: [UsersRepository, UserPolicy],
+  exports: [UsersRepository],
+})
+export class UsersModule {}

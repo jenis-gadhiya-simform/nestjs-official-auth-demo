@@ -1,0 +1,27 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: notes-postgres
+    environment:
+      POSTGRES_USER: notes
+      POSTGRES_PASSWORD: notes
+      POSTGRES_DB: notes
+    ports:
+      - '5434:5432'
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./docker/postgres-init.sql:/docker-entrypoint-initdb.d/init.sql:ro # creates notes_test for the tests
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U notes -d notes']
+      interval: 2s
+      retries: 20
+
+  mailpit:
+    image: axllent/mailpit:v1.29
+    container_name: notes-mailpit
+    ports:
+      - '1026:1025' # SMTP
+      - '8026:8025' # inbox: http://localhost:8026
+
+volumes:
+  postgres-data:
