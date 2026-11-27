@@ -14,6 +14,11 @@ export class NotePolicy implements PolicyBefore<User> {
     return !!user;
   }
 
+  // Every note, not only one's own: only admins, through before().
+  viewAll() {
+    return false;
+  }
+
   view(user: User, note: Note) {
     return note.ownerId === user.id;
   }

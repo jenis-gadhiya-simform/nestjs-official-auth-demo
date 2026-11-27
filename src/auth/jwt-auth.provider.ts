@@ -15,6 +15,8 @@ export class JwtAuth extends JwtBearerProvider<User> {
     registry: AuthenticationRegistry,
   ) {
     super();
+    // Providers run in ascending order and the first to return a user wins:
+    // the session cookie (order 0), then this one. Each needs its own order.
     registry.registerProvider(this, { order: 1 });
   }
 

@@ -80,10 +80,11 @@ describe('Notes API (e2e)', () => {
       expect(res.body.accessToken).toEqual(expect.any(String));
       expect(res.body.refreshToken).toEqual(expect.any(String));
 
-      const token = mailbox
-        .assertSent({ to: alice.email, mail: VerifyEmailMail })
-        .link('/verify-email')
-        .searchParams.get('token');
+      // Sign-up doesn't wait for the email, so the test does.
+      const mail = await vi.waitFor(() =>
+        mailbox.assertSent({ to: alice.email, mail: VerifyEmailMail }),
+      );
+      const token = mail.link('/verify-email').searchParams.get('token');
       await http().post('/auth/email/verify').send({ token }).expect(200);
       // A link works once.
       await http().post('/auth/email/verify').send({ token }).expect(400);
@@ -98,6 +99,15 @@ describe('Notes API (e2e)', () => {
         emailVerified: true,
         role: 'user',
       });
+    });
+
+    it('still signs the user up when the verification email fails', async () => {
+      mailbox.failNext(new Error('SMTP server down'));
+      const res = await http()
+        .post('/auth/sign-up')
+        .send({ email: 'carol@notes.test', password: 'carol-test-password' })
+        .expect(201);
+      expect(res.body.accessToken).toEqual(expect.any(String));
     });
 
     it('refuses a taken address, a short password and a malformed body', async () => {

@@ -29,7 +29,14 @@ import { UsersModule } from './users/users.module.js';
       useFactory: (config: ConfigService) => {
         const appUrl = config.getOrThrow<string>('APP_URL');
         return {
-          accessToken: { key: config.getOrThrow('JWT_SECRET'), ttl: '15m' },
+          accessToken: {
+            key: config.getOrThrow('JWT_SECRET'),
+            ttl: '15m',
+            // Tokens name who issued them and who they are for, and are
+            // checked for both, so a token for another app is refused.
+            issuer: appUrl,
+            audience: appUrl,
+          },
           // Pages of your web app that POST the token from the link back to the API.
           emailVerification: { url: `${appUrl}/verify-email` },
           passwordReset: { url: `${appUrl}/reset-password` },

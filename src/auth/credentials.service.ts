@@ -24,6 +24,7 @@ export class CredentialsService {
       password,
       found?.passwordHash,
     );
-    return valid && found ? found.user : null;
+    // Google and Microsoft accounts have no password, so they never pass here.
+    return valid && found?.passwordHash ? found.user : null;
   }
 }

@@ -27,7 +27,8 @@ export class AccountLinker extends OidcAccountResolver {
     if (linked) return notAdmin(linked);
 
     // First visit: only trust an email the provider has verified.
-    if (!profile.email || !isEmailVerified(profile)) return null; // 403
+    // Returning null refuses the sign-in: the package answers 403.
+    if (!profile.email || !isEmailVerified(profile)) return null;
 
     const existing = await this.users.findByEmail(profile.email);
     if (!existing) {

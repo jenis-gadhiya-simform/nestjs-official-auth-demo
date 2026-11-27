@@ -11,7 +11,8 @@ export class NotesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly authorization: AuthorizationService,
-    private readonly context: AuthenticationContext, // the current user
+    // The current user. requireUser() answers 401 when there is none.
+    private readonly context: AuthenticationContext,
   ) {}
 
   create(data: CreateNoteDto) {
@@ -20,10 +21,11 @@ export class NotesService {
   }
 
   /** Users get their own notes, admins get all of them. */
-  list() {
+  async list() {
     const user = this.context.requireUser();
+    const all = await this.authorization.can(NotePolicy, 'viewAll', user);
     return this.prisma.note.findMany({
-      where: user.role === 'admin' ? {} : { ownerId: user.id },
+      where: all ? {} : { ownerId: user.id },
       orderBy: { createdAt: 'desc' },
     });
   }
